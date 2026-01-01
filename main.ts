@@ -14,8 +14,8 @@ export default class GlobalHotkeysPlugin extends Plugin {
   settings: GlobalHotkeysPluginSettings;
   currentlyMapped: { [key: string]: string };
 
-  async registerGlobalShortcut(command_id:string, accelerator:string,
-                               oncomplete?:(success:boolean)=>void) {
+  async registerGlobalShortcut(command_id: string, accelerator: string,
+    oncomplete?: (success: boolean) => void) {
     if (command_id in this.currentlyMapped) {
       this.unregisterGlobalShortcut(command_id);
     }
@@ -26,17 +26,18 @@ export default class GlobalHotkeysPlugin extends Plugin {
           const command = (this.app as any).commands.commands[command_id];
           if (!command) return;
           (this.app as any).setting.close(); // Ensure all modals are closed?
+          const anyFocusedBefore = (remote.BrowserWindow as any).getAllWindows().some((w: any) => w.isFocused());
           const win = remote.getCurrentWindow();
-          const wasHidden = !win.isFocused() || !win.isVisible();
 
           if (command.checkCallback)
             command.checkCallback(false);
           else if (command.callback)
             command.callback();
 
-          // only activate Obsidian if visibility hasn't changed
-          const isHidden = !win.isFocused() || !win.isVisible();
-          if (wasHidden && isHidden)
+          // only activate Obsidian if no window is currently focused.
+          // This prevents stealing focus from a newly created window.
+          const anyFocusedAfter = (remote.BrowserWindow as any).getAllWindows().some((w: any) => w.isFocused());
+          if (!anyFocusedBefore && !anyFocusedAfter)
             remote.getCurrentWindow().show(); // Activate obsidian
         });
       } catch (error) {
@@ -53,7 +54,7 @@ export default class GlobalHotkeysPlugin extends Plugin {
     }
   }
 
-  async unregisterGlobalShortcut(command_id:string) {
+  async unregisterGlobalShortcut(command_id: string) {
     const accelerator = this.currentlyMapped[command_id];
     if (accelerator) {
       globalShortcut.unregister(accelerator);
@@ -61,7 +62,7 @@ export default class GlobalHotkeysPlugin extends Plugin {
     }
   }
 
-  isRegistered(command_id:string) {
+  isRegistered(command_id: string) {
     return (command_id in this.currentlyMapped);
   }
 
@@ -143,14 +144,14 @@ class GlobalShortcutSettingTab extends PluginSettingTab {
     });
   }
 
-  async removeSavedAccelerator(command_id:string) {
+  async removeSavedAccelerator(command_id: string) {
     this.plugin.unregisterGlobalShortcut(command_id);
     delete this.plugin.settings.accelerators[command_id];
     await this.plugin.saveSettings();
   }
 
   display(): void {
-    let {containerEl} = this;
+    let { containerEl } = this;
     this.settingElems = []
 
     containerEl.empty();
@@ -195,26 +196,26 @@ class GlobalShortcutSettingTab extends PluginSettingTab {
       let setting = new Setting(containerEl)
         .setName(name)
         .addText(text => text
-                 .setPlaceholder('Hotkey')
-                 .setValue(accelerator)
-                 .onChange(async (value) => {
-                   const inputEl = (setting.components[0] as any).inputEl;
-                   if (value) {
-                     this.plugin.registerGlobalShortcut(cmd, value, async (success) => {
-                       if (success) {
-                         inputEl.classList.remove('invalid-accelerator');
-                         this.plugin.settings.accelerators[cmd] = value;
-                         await this.plugin.saveSettings();
-                       } else {
-                         this.removeSavedAccelerator(cmd);
-                         inputEl.classList.add('invalid-accelerator');
-                       }
-                     });
-                   } else {
-                     inputEl.classList.remove('invalid-accelerator');
-                     this.removeSavedAccelerator(cmd);
-                   }
-                 }));
+          .setPlaceholder('Hotkey')
+          .setValue(accelerator)
+          .onChange(async (value) => {
+            const inputEl = (setting.components[0] as any).inputEl;
+            if (value) {
+              this.plugin.registerGlobalShortcut(cmd, value, async (success) => {
+                if (success) {
+                  inputEl.classList.remove('invalid-accelerator');
+                  this.plugin.settings.accelerators[cmd] = value;
+                  await this.plugin.saveSettings();
+                } else {
+                  this.removeSavedAccelerator(cmd);
+                  inputEl.classList.add('invalid-accelerator');
+                }
+              });
+            } else {
+              inputEl.classList.remove('invalid-accelerator');
+              this.removeSavedAccelerator(cmd);
+            }
+          }));
       this.settingElems.push(setting);
     });
 
