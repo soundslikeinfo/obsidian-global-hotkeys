@@ -26,19 +26,19 @@ export default class GlobalHotkeysPlugin extends Plugin {
           const command = (this.app as any).commands.commands[command_id];
           if (!command) return;
           (this.app as any).setting.close(); // Ensure all modals are closed?
-          const anyFocusedBefore = (remote.BrowserWindow as any).getAllWindows().some((w: any) => w.isFocused());
-          const win = remote.getCurrentWindow();
+          const mainWindow = remote.getCurrentWindow();
 
           if (command.checkCallback)
             command.checkCallback(false);
           else if (command.callback)
             command.callback();
 
-          // only activate Obsidian if no window is currently focused.
-          // This prevents stealing focus from a newly created window.
-          const anyFocusedAfter = (remote.BrowserWindow as any).getAllWindows().some((w: any) => w.isFocused());
-          if (!anyFocusedBefore && !anyFocusedAfter)
-            remote.getCurrentWindow().show(); // Activate obsidian
+          // If a secondary window is focused (e.g. a newly created window), stay put.
+          // Otherwise, bring the main window to the front as intended by the README.
+          const focusedWindow = (remote.BrowserWindow as any).getFocusedWindow();
+          if (!focusedWindow || focusedWindow.id === mainWindow.id) {
+            mainWindow.show();
+          }
         });
       } catch (error) {
         return false;
