@@ -23,9 +23,9 @@ export default class GlobalHotkeysPlugin extends Plugin {
     let success = (() => {
       try {
         return globalShortcut.register(accelerator, () => {
-          const command = app.commands.commands[command_id];
+          const command = (this.app as any).commands.commands[command_id];
           if (!command) return;
-          this.app.setting.close(); // Ensure all modals are closed?
+          (this.app as any).setting.close(); // Ensure all modals are closed?
           const win = remote.getCurrentWindow();
           const wasHidden = !win.isFocused() || !win.isVisible();
 
@@ -180,12 +180,12 @@ class GlobalShortcutSettingTab extends PluginSettingTab {
       filterEl.setAttribute('placeholder', 'Filter...');
       filterEl.value = this.filterString;
       filterEl.addEventListener('input', e => {
-        this.filterString = e.target.value.toLowerCase();
+        this.filterString = (e.target as HTMLInputElement).value.toLowerCase();
         this.updateHotkeyVisibility();
       });
     });
 
-    let allCmds = this.app.commands.commands;
+    let allCmds = (this.app as any).commands.commands;
 
     const cmdKeys = Object.keys(allCmds);
     cmdKeys.sort((e1, e2) => (allCmds[e1].name < allCmds[e2].name) ? -1 : 1);
@@ -198,7 +198,7 @@ class GlobalShortcutSettingTab extends PluginSettingTab {
                  .setPlaceholder('Hotkey')
                  .setValue(accelerator)
                  .onChange(async (value) => {
-                   const inputEl = setting.components[0].inputEl;
+                   const inputEl = (setting.components[0] as any).inputEl;
                    if (value) {
                      this.plugin.registerGlobalShortcut(cmd, value, async (success) => {
                        if (success) {
